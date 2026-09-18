@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+
+#include "ar9344.dtsi"
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "ALFA Network AP120C";
+	compatible = "alfa-network,ap120c", "qca,ar9344";
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8";
+	};
+
+	aliases {
+		led-boot = &led_wlan;
+		led-failsafe = &led_wlan;
+		led-running = &led_wlan;
+		led-upgrade = &led_wlan;
+		label-mac-device = &eth0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led_wlan: led-0 {
+			function = LED_FUNCTION_WLAN;
+			color = <LED_COLOR_ID_RED>;
+			gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "phy0tpt";
+		};
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		rfkill {
+			label = "wifi";
+			linux,code = <KEY_RFKILL>;
+			gpios = <&gpio 16 GPIO_ACTIVE_LOW>;
+			debounce-interval = <60>;
+		};
+	};
+};
+
+&ref {
+	clock-frequency = <40000000>;
+};
+
+&spi {
+	status = "okay";
+
+	/*
+	 * A second MX25L12845E sits on chip select 1 (holds the vendor's
+	 * "image B"). Its CS pin mux is unknown, so it is left out for now.
+	 */
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <25000000>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "u-boot";
+				reg = <0x000000 0x040000>;
+				read-only;
+			};
+
+			partition@40000 {
+				label = "u-boot-env";
+				reg = <0x040000 0x010000>;
+			};
+
+			partition@50000 {
+				/*
+				 * Vendor layout: rootfs @0x50000 (13312k) followed
+				 * by kernel @0xd50000 (1536k). Both are merged here
+				 * with the kernel first, so U-Boot's bootcmd has to
+				 * be changed to "bootm 0x9f050000".
+				 */
+				compatible = "denx,uimage";
+				label = "firmware";
+				reg = <0x050000 0xe80000>;
+			};
+
+			partition@ed0000 {
+				label = "data";
+				reg = <0xed0000 0x120000>;
+				read-only;
+			};
+
+			partition@ff0000 {
+				label = "art";
+				reg = <0xff0000 0x010000>;
+				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					calibration_art_1000: calibration@1000 {
+						reg = <0x1000 0x440>;
+					};
+
+					macaddr_art_1002: macaddr@1002 {
+						compatible = "mac-base";
+						reg = <0x1002 0x6>;
+						#nvmem-cell-cells = <1>;
+					};
+				};
+			};
+		};
+	};
+};
+
+&mdio0 {
+	status = "okay";
+
+	phy5: ethernet-phy@5 {
+		reg = <5>;
+		eee-broken-100tx;
+		eee-broken-1000t;
+	};
+};
+
+&eth0 {
+	status = "okay";
+
+	pll-data = <0x42000000 0x00000101 0x00001313>;
+
+	nvmem-cells = <&macaddr_art_1002 0>;
+	nvmem-cell-names = "mac-address";
+
+	phy-mode = "rgmii-rxid";
+	phy-handle = <&phy5>;
+
+	gmac-config {
+		device = <&gmac>;
+		rgmii-gmac0 = <1>;
+		rxd-delay = <2>;
+		rxdv-delay = <2>;
+		txd-delay = <2>;
+		txen-delay = <2>;
+	};
+};
+
+&wmac {
+	status = "okay";
+
+	nvmem-cells = <&macaddr_art_1002 1>, <&calibration_art_1000>;
+	nvmem-cell-names = "mac-address", "calibration";
+};
+
+&pcie {
+	status = "okay";
+
+	/* 5 GHz ath9k card, calibration data comes from its own EEPROM */
+	wifi@0,0 {
+		compatible = "pci168c,0030";
+		reg = <0x0000 0 0 0 0>;
+		nvmem-cells = <&macaddr_art_1002 2>;
+		nvmem-cell-names = "mac-address";
+	};
+};

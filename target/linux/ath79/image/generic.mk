@@ -250,6 +250,14 @@ define Device/airtight_c-75
 endef
 TARGET_DEVICES += airtight_c-75
 
+define Device/alfa-network_ap120c
+  SOC := ar9344
+  DEVICE_VENDOR := ALFA Network
+  DEVICE_MODEL := AP120C
+  IMAGE_SIZE := 14848k
+endef
+TARGET_DEVICES += alfa-network_ap120c
+
 define Device/alfa-network_ap121f
   SOC := ar9331
   DEVICE_VENDOR := ALFA Network
