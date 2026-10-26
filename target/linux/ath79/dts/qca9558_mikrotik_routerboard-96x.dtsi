@@ -99,6 +99,14 @@
 
 				hard_config {
 					read-only;
+
+					nvmem-layout {
+						compatible = "mikrotik,routerboot-nvmem";
+
+						macaddr_hard: base-mac-address {
+							#nvmem-cell-cells = <1>;
+						};
+					};
 				};
 
 				bios {
@@ -148,6 +156,9 @@
 &eth0 {
 	status = "okay";
 
+	nvmem-cells = <&macaddr_hard 0>;
+	nvmem-cell-names = "mac-address";
+
 	phy-handle = <&phy0>;
 	/* gigabit pll-data from vendor firmware
 	 * TX_INVERT, TX_DELAY=3, GIGE, OFFSET_PHASE
@@ -172,6 +183,9 @@
 
 &eth1 {
 	status = "okay";
+
+	nvmem-cells = <&macaddr_hard 5>;
+	nvmem-cell-names = "mac-address";
 
 	phy-handle = <&phy_sfp>;
 	pll-data = <0x03000000 0x00000101 0x00001616>;
